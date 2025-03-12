@@ -3,27 +3,43 @@ import subprocess
 import os
 from bs4 import BeautifulSoup, NavigableString, Tag
 import re
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 def convert_docx_to_html(input_path: str) -> str:
     """First step: Convert DOCX to HTML using Pandoc"""
     temp_html = "temp.html"
-    subprocess.run([
-        "pandoc",
-        input_path,
-        "-f", "docx",
-        "-t", "html",
-        "-o", temp_html
-    ])
-    return temp_html
+    try:
+        result = subprocess.run([
+            "pandoc",
+            input_path,
+            "-f", "docx",
+            "-t", "html",
+            "-o", temp_html
+        ], check=True, capture_output=True, text=True)
+        if not os.path.exists(temp_html):
+            raise Exception("HTML file was not created")
+        return temp_html
+    except subprocess.CalledProcessError as e:
+        raise Exception(f"Pandoc conversion failed: {e.stderr}")
+    except Exception as e:
+        raise Exception(f"Error during conversion: {str(e)}")
 
 def html_to_markdown(docx_path, output_path):
     """Convert DOCX to Markdown via HTML"""
+    logger.debug(f"Starting conversion of {docx_path}")
+    
     # First convert DOCX to HTML
     html_path = convert_docx_to_html(docx_path)
+    logger.debug(f"HTML conversion complete: {html_path}")
     
     # Then process the HTML
     with open(html_path, 'r', encoding='utf-8') as file:
-        soup = BeautifulSoup(file, 'html.parser')
+        html_content = file.read()
+        logger.debug(f"HTML content length: {len(html_content)}")
+        soup = BeautifulSoup(html_content, 'html.parser')
 
     markdown = []
     current_section = None
