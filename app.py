@@ -35,11 +35,16 @@ st.markdown("""
             font-size: 12px;
         }
         .main-content {
-            margin-bottom: 60px; /* Space for the fixed branding */
+            margin-bottom: 60px;
         }
 
-        /* Hide Manage App button */
-        .viewerBadge_container__1QSob {
+        /* Hide Manage App button - multiple possible selectors */
+        .viewerBadge_container__1QSob,
+        .stApp > header,
+        .appview-container .stApp header,
+        [data-testid="stToolbar"],
+        div[data-testid="stDecoration"],
+        div[data-testid="stStatusWidget"] {
             display: none !important;
         }
     </style>
