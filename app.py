@@ -1,11 +1,9 @@
 import streamlit as st
 import tempfile
 import os
-from cv_parser import html_to_markdown, convert_docx_to_html
+from cv_parser import html_to_markdown
 from pathlib import Path
 import base64
-import subprocess
-from bs4 import BeautifulSoup
 
 # Get the path to the assets directory
 assets_path = Path(__file__).parent / "assets"
@@ -17,25 +15,23 @@ st.set_page_config(
     layout="centered"
 )
 
-# Display Pandoc version
-try:
-    pandoc_version = subprocess.check_output(["pandoc", "--version"], text=True)
-    st.sidebar.text(f"Pandoc version:\n{pandoc_version.split('\n')[0]}")
-except Exception as e:
-    st.sidebar.text(f"Error checking Pandoc version: {str(e)}")
-
 # Custom CSS for branding
 st.markdown("""
     <style>
+        /* Existing CSS styles... */
+
+        /* Hide Streamlit branding */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        
         .logo-container {
             position: fixed;
-            bottom: 60px;  /* Increased from 20px to go above Manage App */
+            bottom: 20px;
             right: 20px;
             display: flex;
             align-items: center;
             gap: 10px;
             opacity: 0.7;
-            z-index: 999999;
         }
         .logo-container img {
             height: 30px;
@@ -45,7 +41,7 @@ st.markdown("""
             font-size: 12px;
         }
         .main-content {
-            margin-bottom: 100px;  /* Increased margin to accommodate both */
+            margin-bottom: 60px; /* Space for the fixed branding */
         }
     </style>
 """, unsafe_allow_html=True)
@@ -67,48 +63,37 @@ if uploaded_file:
             # Create temporary files for processing
             with tempfile.NamedTemporaryFile(suffix='.docx', delete=False) as temp_docx:
                 temp_docx.write(uploaded_file.getvalue())
-                docx_path = temp_docx.name
-            
-            # Create a temporary file for the markdown output
+                
             with tempfile.NamedTemporaryFile(suffix='.md', delete=False) as temp_md:
-                md_path = temp_md.name
-            
-            try:
                 # Convert the file
-                html_to_markdown(docx_path, md_path)
+                html_to_markdown(temp_docx.name, temp_md.name)
                 
                 # Read the markdown content
-                with open(md_path, 'r', encoding='utf-8') as f:
+                with open(temp_md.name, 'r', encoding='utf-8') as f:
                     markdown_content = f.read()
-                
-                # Show success message
-                st.success('Conversion completed!')
-                
-                # Preview section
-                with st.expander("Preview Markdown"):
-                    st.markdown(markdown_content)
-                
-                # Download button
-                st.download_button(
-                    label="📥 Download Markdown File",
-                    data=markdown_content,
-                    file_name=f"{uploaded_file.name.rsplit('.', 1)[0]}.md",
-                    mime='text/markdown',
-                )
-            finally:
-                # Clean up temporary files
-                if os.path.exists(docx_path):
-                    os.unlink(docx_path)
-                if os.path.exists(md_path):
-                    os.unlink(md_path)
-                
+
+            # Clean up temporary files
+            os.unlink(temp_docx.name)
+            os.unlink(temp_md.name)
+
+        # Show success message
+        st.success('Conversion completed!')
+
+        # Preview section
+        with st.expander("Preview Markdown"):
+            st.markdown(markdown_content)
+
+        # Download button
+        st.download_button(
+            label="📥 Download Markdown File",
+            data=markdown_content,
+            file_name=f"{uploaded_file.name.rsplit('.', 1)[0]}.md",
+            mime='text/markdown',
+        )
+
     except Exception as e:
         st.error(f'An error occurred during conversion: {str(e)}')
         st.error('Please make sure you uploaded a valid DOCX file.')
-        
-        # Add more detailed error information for debugging
-        import traceback
-        st.expander("Error Details").code(traceback.format_exc())
 
 # Add some helpful information
 st.markdown("---")
