@@ -20,12 +20,13 @@ st.markdown("""
     <style>
         .logo-container {
             position: fixed;
-            bottom: 20px;
+            bottom: 60px;  /* Increased from 20px to go above Manage App */
             right: 20px;
             display: flex;
             align-items: center;
             gap: 10px;
             opacity: 0.7;
+            z-index: 999999;
         }
         .logo-container img {
             height: 30px;
@@ -35,17 +36,7 @@ st.markdown("""
             font-size: 12px;
         }
         .main-content {
-            margin-bottom: 60px;
-        }
-
-        /* Hide Manage App button - multiple possible selectors */
-        .viewerBadge_container__1QSob,
-        .stApp > header,
-        .appview-container .stApp header,
-        [data-testid="stToolbar"],
-        div[data-testid="stDecoration"],
-        div[data-testid="stStatusWidget"] {
-            display: none !important;
+            margin-bottom: 100px;  /* Increased margin to accommodate both */
         }
     </style>
 """, unsafe_allow_html=True)
