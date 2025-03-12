@@ -26,7 +26,7 @@ st.markdown("""
         
         .logo-container {
             position: fixed;
-            bottom: 20px;
+            bottom: 60px;  /* Increased from 20px to 60px to move it up */
             right: 20px;
             display: flex;
             align-items: center;
@@ -41,7 +41,7 @@ st.markdown("""
             font-size: 12px;
         }
         .main-content {
-            margin-bottom: 60px; /* Space for the fixed branding */
+            margin-bottom: 100px; /* Increased from 60px to 100px to provide more space */
         }
     </style>
 """, unsafe_allow_html=True)
