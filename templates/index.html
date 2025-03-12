@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>CV DOCX to Markdown Converter</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        text-align: center;
+      }
+      .upload-container {
+        border: 2px dashed #ccc;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 5px;
+      }
+      .upload-container.dragover {
+        border-color: #000;
+        background-color: #f0f0f0;
+      }
+      #file-input {
+        display: none;
+      }
+      .button {
+        background-color: #4caf50;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      .button:hover {
+        background-color: #45a049;
+      }
+      #file-name {
+        margin-top: 10px;
+        font-style: italic;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>CV DOCX to Markdown Converter</h1>
+    <div class="upload-container" id="drop-zone">
+      <form
+        id="upload-form"
+        action="/convert"
+        method="post"
+        enctype="multipart/form-data"
+      >
+        <input type="file" id="file-input" name="file" accept=".docx" />
+        <label for="file-input" class="button">Choose File or Drop Here</label>
+        <div id="file-name"></div>
+      </form>
+    </div>
+
+    <script>
+      const dropZone = document.getElementById("drop-zone");
+      const fileInput = document.getElementById("file-input");
+      const fileName = document.getElementById("file-name");
+      const form = document.getElementById("upload-form");
+
+      // Handle file selection
+      fileInput.addEventListener("change", function () {
+        if (this.files[0]) {
+          fileName.textContent = `Selected file: ${this.files[0].name}`;
+          form.submit();
+        }
+      });
+
+      // Handle drag and drop
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+      });
+
+      dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("dragover");
+      });
+
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+
+        if (e.dataTransfer.files[0]) {
+          fileInput.files = e.dataTransfer.files;
+          fileName.textContent = `Selected file: ${e.dataTransfer.files[0].name}`;
+          form.submit();
+        }
+      });
+    </script>
+  </body>
+</html>
