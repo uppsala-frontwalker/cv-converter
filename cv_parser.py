@@ -4,12 +4,32 @@ import os
 from bs4 import BeautifulSoup, NavigableString, Tag
 import re
 import logging
+import sys
+import platform
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+def check_environment():
+    """Check environment details"""
+    try:
+        # Check Pandoc version
+        result = subprocess.run(["pandoc", "--version"], 
+                              capture_output=True, 
+                              text=True)
+        logger.debug(f"Pandoc version info:\n{result.stdout.split('\n')[0]}")
+        
+        # Check Python encoding
+        logger.debug(f"Python file encoding: {sys.getdefaultencoding()}")
+        
+        # Check platform
+        logger.debug(f"Platform: {platform.system()}")
+    except Exception as e:
+        logger.error(f"Error checking environment: {str(e)}")
+        
 def convert_docx_to_html(input_path: str) -> str:
     """First step: Convert DOCX to HTML using Pandoc"""
+    check_environment()
     temp_html = "temp.html"
     try:
         result = subprocess.run([
@@ -17,10 +37,21 @@ def convert_docx_to_html(input_path: str) -> str:
             input_path,
             "-f", "docx",
             "-t", "html",
-            "-o", temp_html
+            "-o", temp_html,
+            "--verbose"
         ], check=True, capture_output=True, text=True)
+        
+        logger.debug(f"Pandoc stdout: {result.stdout}")
+        logger.debug(f"Pandoc stderr: {result.stderr}")
+        
         if not os.path.exists(temp_html):
             raise Exception("HTML file was not created")
+            
+        # Log the first few lines of the HTML file
+        with open(temp_html, 'r', encoding='utf-8') as f:
+            first_lines = ''.join(f.readlines()[:20])
+            logger.debug(f"First few lines of HTML:\n{first_lines}")
+            
         return temp_html
     except subprocess.CalledProcessError as e:
         raise Exception(f"Pandoc conversion failed: {e.stderr}")
@@ -39,7 +70,23 @@ def html_to_markdown(docx_path, output_path):
     with open(html_path, 'r', encoding='utf-8') as file:
         html_content = file.read()
         logger.debug(f"HTML content length: {len(html_content)}")
+        
+        # Log the HTML content structure
+        logger.debug("HTML content structure:")
+        logger.debug(html_content[:500] + "..." if len(html_content) > 500 else html_content)
+        
         soup = BeautifulSoup(html_content, 'html.parser')
+        
+        # Log the structure of lists in the HTML
+        lists = soup.find_all(['ul', 'ol'])
+        logger.debug(f"Found {len(lists)} lists in HTML")
+        for idx, lst in enumerate(lists):
+            logger.debug(f"List {idx + 1}:")
+            logger.debug(f"Type: {lst.name}")
+            items = lst.find_all('li')
+            logger.debug(f"Items count: {len(items)}")
+            for item in items:
+                logger.debug(f"  - {item.get_text(strip=True)}")
 
     markdown = []
     current_section = None
@@ -79,44 +126,52 @@ def html_to_markdown(docx_path, output_path):
 
     def process_cell_content(element):
         """Process the content within a table cell."""
+        logger.debug(f"Processing element: {element.name if isinstance(element, Tag) else 'text'}")
+        
         if isinstance(element, NavigableString):
-            # Skip text nodes that are only whitespace
             if not element.strip():
                 return
-            # Check if parent is a paragraph
             if element.parent.name == 'p':
-                # We will process this text within the paragraph handling
                 return
-            else:
-                text = element.strip()
-                if text:
+            text = element.strip()
+            if text:
+                # Check if this is a technology item (single word/phrase in a td)
+                if (element.parent.name == 'td' and 
+                    len(element.parent.get_text(strip=True).split()) <= 3 and
+                    not any(word in text.lower() for word in ['jan', 'feb', 'mar', 'apr', 'maj', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec']) and
+                    not any(word in text for word in ['AB', 'Inc', 'LLC']) and  # Exclude company names
+                    not text.endswith('er') and  # Exclude words like "Frontwalker"
+                    not text.startswith('20')):  # Exclude years
+                    logger.debug(f"Adding technology item: {text}")
+                    markdown.append(f"- {text}")
+                else:
+                    logger.debug(f"Adding text: {text}")
                     markdown.append(text)
         elif isinstance(element, Tag):
             if element.name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
                 level = int(element.name[1])
                 process_heading(element, level)
-                # Already adds blank line
             elif element.name == 'p':
                 para_text = handle_paragraph(element)
                 if para_text:
                     markdown.append(para_text)
-                    markdown.append('')  # Add blank line after paragraph
+                    markdown.append('')
             elif element.name in ['ul', 'ol']:
-                # Handle lists
+                logger.debug(f"Processing list: {element.name}")
                 list_items = element.find_all('li', recursive=False)
+                logger.debug(f"Found {len(list_items)} list items")
+                
                 for index, li in enumerate(list_items, start=1):
                     li_text = li.get_text(separator=" ", strip=True)
                     li_text = ' '.join(li_text.split())
-                    if element.name == 'ul':
-                        markdown.append(f"- {li_text}")
-                    else:
-                        markdown.append(f"{index}. {li_text}")
-                markdown.append('')  # Blank line after list
+                    if li_text:
+                        list_entry = f"- {li_text}" if element.name == 'ul' else f"{index}. {li_text}"
+                        logger.debug(f"Adding list item: {list_entry}")
+                        markdown.append(list_entry)
+                markdown.append('')
             else:
-                # Recursively process other elements
                 for child in element.contents:
                     process_cell_content(child)
-        # No need to add a blank line here after cell content
 
     def process_table(table, current_section):
         """Process an HTML table and extract content into markdown."""
