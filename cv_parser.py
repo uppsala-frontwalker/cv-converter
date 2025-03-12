@@ -150,13 +150,69 @@ def html_to_markdown(docx_path, output_path):
                         markdown.append(f"##### {position_title}")
                         markdown.append("")  # Blank line after position title
 
-                    # Process rest of the content in right cell
-                    # Exclude the position heading
-                    for elem in right_cell.children:
-                        if elem == position:
+                    # Extract all text content from right cell for analysis
+                    all_text_elements = []
+                    
+                    # Process paragraphs first (main description)
+                    paragraphs = right_cell.find_all('p')
+                    for para in paragraphs:
+                        para_text = handle_paragraph(para)
+                        if para_text:
+                            para_text = ' '.join(para_text.split())
+                            all_text_elements.append((para_text, len(para_text), 'paragraph'))
+                    
+                    # Process lists (could be tech stack in some versions)
+                    lists = right_cell.find_all(['ul', 'ol'])
+                    for lst in lists:
+                        items = lst.find_all('li')
+                        for item in items:
+                            item_text = item.get_text(strip=True)
+                            if item_text:
+                                all_text_elements.append((item_text, len(item_text), 'list_item'))
+                    
+                    # Process spans and other inline elements (might be tech stack in some versions)
+                    spans = right_cell.find_all(['span', 'strong', 'em', 'b', 'i'])
+                    for span in spans:
+                        # Only process if it's a direct child of the cell or within a div
+                        # (to avoid processing spans inside paragraphs we already handled)
+                        if span.parent.name in ['td', 'div']:
+                            span_text = span.get_text(strip=True)
+                            if span_text and len(span_text) < 50:  # Likely a tech stack item
+                                all_text_elements.append((span_text, len(span_text), 'span'))
+                    
+                    # Process any remaining text nodes directly in the cell
+                    for child in right_cell.children:
+                        if isinstance(child, NavigableString) and child.strip():
+                            text = child.strip()
+                            if len(text) < 50:  # Likely a tech stack item
+                                all_text_elements.append((text, len(text), 'text'))
+                    
+                    # Sort elements: longer paragraphs first (descriptions), then shorter items (tech stack)
+                    all_text_elements.sort(key=lambda x: (-x[1], x[2]))
+                    
+                    # Add elements to markdown
+                    description_added = False
+                    tech_stack_items = []
+                    
+                    for text, length, elem_type in all_text_elements:
+                        # Skip empty or very short items
+                        if not text or len(text) < 2:
                             continue
-                        process_cell_content(elem)
-                    markdown.append("")  # Blank line after description
+                            
+                        # Longer texts are likely descriptions
+                        if length > 50 and not description_added:
+                            markdown.append(text)
+                            markdown.append("")  # Blank line after paragraph
+                            description_added = True
+                        # Shorter texts are likely tech stack items
+                        elif length <= 50 and text not in tech_stack_items:
+                            tech_stack_items.append(text)
+                    
+                    # Add tech stack items at the end
+                    for item in tech_stack_items:
+                        markdown.append(item)
+                    
+                    markdown.append("")  # Blank line after section
 
                 elif current_section in ["Utbildning", "Education", "Kurser och certifieringar", "Courses and certifications", "Kompetenser", "Competences"]:
                     # Left cell: education info
