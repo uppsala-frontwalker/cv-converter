@@ -37,6 +37,11 @@ st.markdown("""
         .main-content {
             margin-bottom: 60px; /* Space for the fixed branding */
         }
+
+        /* Hide Manage App button */
+        .viewerBadge_container__1QSob {
+            display: none !important;
+        }
     </style>
 """, unsafe_allow_html=True)
 
