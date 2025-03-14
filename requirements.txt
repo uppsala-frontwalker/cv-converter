@@ -1,3 +1,5 @@
 streamlit
 mammoth
 beautifulsoup4
+docxtpl
+python-docx
